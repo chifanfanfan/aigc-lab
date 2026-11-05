@@ -1,0 +1,69 @@
+# SD1.5 LoRA 训练配置（kohya_ss / sd-scripts）
+#
+# 本机实测：RTX 3050 Laptop，4 GB 显存
+#   → 先按「4G 极限档」试；OOM 就上云（Kaggle T4 16G 免费 / AutoDL 约 2 元/小时）
+#
+# 显存参考：
+#   4G  : resolution=512, batch=1, network_dim=8,  gradient_checkpointing, cache_latents, lowram
+#   6G  : resolution=512, batch=1, network_dim=16
+#   8G  : resolution=512, batch=2, network_dim=32
+#   12G+: resolution=512, batch=4, network_dim=64
+
+[model]
+# 底模必须和推理时一致，否则效果差很多
+pretrained_model_name_or_path = "D:/models/sd15/anything-v5.safetensors"
+v2 = false
+v_parameterization = false
+
+[dataset]
+train_data_dir = "D:/datasets/lora_train"
+# 20 张图 × 10 = 200 步/epoch
+num_repeats = 10
+resolution = [512, 512]
+batch_size = 1
+caption_extension = ".txt"
+shuffle_caption = false
+keep_tokens = 1
+# 4G 必开：先把图片编码结果缓存到磁盘，省显存
+cache_latents = true
+cache_latents_to_disk = true
+
+[network]
+network_module = "networks.lora"
+# 4G 用 8；显存够了再升到 16 / 32
+network_dim = 8
+network_alpha = 4
+network_train_unet_only = false
+
+[optimizer]
+optimizer_type = "AdamW8bit"
+learning_rate = 1e-4
+text_encoder_lr = 5e-5
+unet_lr = 1e-4
+lr_scheduler = "cosine"
+lr_warmup_steps = 50
+
+[training]
+max_train_epochs = 10
+save_every_n_epochs = 2
+seed = 42
+# 4G 必开：用时间换显存
+gradient_checkpointing = true
+mixed_precision = "fp16"
+xformers = true
+sdpa = true
+# 显存/内存紧张时打开（会慢一些）
+lowram = true
+# 训练完自动跑一遍采样，方便看效果
+sample_every_n_epochs = 2
+sample_prompts = "sample_prompts.txt"
+sample_sampler = "euler_a"
+
+[output]
+output_dir = "D:/models/lora_out"
+output_name = "style_demo_v1"
+save_model_as = "safetensors"
+
+[logging]
+logging_dir = "D:/models/lora_out/logs"
+log_with = "tensorboard"

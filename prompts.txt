@@ -1,0 +1,15 @@
+# 电商场景：商品图批量生成
+# 用法：python scripts\batch_run.py --workflow workflow_api.json --prompts prompts.txt
+
+a photo of a ceramic coffee mug on a wooden table, soft morning light, product photography, clean background, 8k
+a leather backpack on a concrete floor, studio lighting, e-commerce product shot, high detail
+a pair of white sneakers floating on pastel background, minimal, commercial product photo
+a glass perfume bottle with water droplets, rim lighting, luxury product photography
+a cotton t-shirt folded on beige linen, natural light, catalog photo, sharp focus
+a stainless steel water bottle in a gym setting, dramatic side light, product shot
+a basket of fresh oranges on a marble counter, top-down, bright natural light
+a wireless earbuds case on dark slate, blue accent light, tech product photography
+a wool scarf draped over a wooden chair, warm afternoon light, cozy catalog shot
+a ceramic plate with dried flowers, minimal styling, soft shadow, product photography
+# 中文提示词在同一份文件里也可以，SD1.5 建议用英文
+# 一行一条，井号开头的行会被跳过
