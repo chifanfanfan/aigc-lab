@@ -9,83 +9,109 @@
 | 驱动 | 561.09（支持到 CUDA 12.6） |
 | 系统 | Windows 11 |
 | ComfyUI | v0.44.0 便携版 **cu126** |
+| torch | 2.14.1+cu126 |
 
-## 踩坑：cu130 版本启动即崩
+## 核心数据：GPU 出图 4.6 秒/张
+
+512×512 / 20 步 / euler / cfg 7，同一提示词连跑：
+
+| 次 | 耗时 | 说明 |
+|---|---|---|
+| 第 1 张 | **12.5 秒** | 含模型加载（只在第一次） |
+| 第 2 张 | **4.5 秒** | 稳定速度 |
+| 第 3 张 | **4.5 秒** | |
+| 第 4 张 | **4.8 秒** | |
+| **稳定值** | **≈ 4.6 秒/张** | 50 张约 4 分钟 |
+
+对比 CPU 模式：384×384 / 6 步 = **39 秒**（分辨率低、步数少，还慢 8 倍）。
+
+## 踩坑 1：cu130 版本启动即崩
 
 先下的是 `ComfyUI_windows_portable_nvidia.7z`，自带 **torch 2.14.1+cu130**（CUDA 13.0）。
-启动直接崩：
 
 ```
 Windows fatal exception: access violation
-Stack:
   torch/cuda/__init__.py, line 591 in _lazy_init
-  comfy/model_management.py, line 213 in get_torch_device
 ```
 
-诊断过程：
+诊断：
 
 ```powershell
-# 1. 看 torch 要哪个 CUDA
 python_embeded\python.exe -c "import torch; print(torch.__version__, torch.version.cuda)"
 # → 2.14.1+cu130  13.0
 
-# 2. 看驱动支持到哪个 CUDA
-# 注册表 DriverVersion = 32.0.15.6109  → NVIDIA 561.09  → 最高 CUDA 12.6
+# 驱动版本（注册表 DriverVersion = 32.0.15.6109 → NVIDIA 561.09 → 最高 CUDA 12.6）
 ```
 
-**结论**：CUDA 13.0 运行时需要驱动 ≥ 580，而机器上是 561.09 → 版本不匹配，CUDA 初始化崩溃。
+CUDA 13.0 需要驱动 ≥ 580，机器上是 561.09 → 不匹配。
 
-**两个解**：
+**解**：换 `ComfyUI_windows_portable_nvidia_cu126.7z`（1.9 GB）。
 
-| 方案 | 代价 | 效果 |
-|---|---|---|
-| A. 更新显卡驱动到 580+ | 要管理员 + 重启 | 一劳永逸，推荐 |
-| B. 换 `ComfyUI_windows_portable_nvidia_cu126.7z` | 重下 1.9 GB | 立刻能用 |
+## 踩坑 2：GPU 被禁用，CUDA 完全不存在
 
-本次采用 **B**，下载 + 解压约 6 分钟。
-
-## 验证结果
-
-| 项 | 结果 |
-|---|---|
-| ComfyUI 启动（CPU 模式） | ✅ 85 秒起服务，8188 监听 |
-| 自定义节点 `PromptFromFile` | ✅ 已注册，分类 `custom/batch` |
-| 自定义节点 `SaveNameByIndex` | ✅ 已注册 |
-| 节点总数 | 1038（含我们的 2 个） |
-| API 单张出图（384×384，6 步） | ✅ 39.1 秒 |
-| 批量脚本 2 张 | ✅ 34.7s + 43.3s，平均 39.0 秒/张 |
-| 输出图片 | 384×384 RGB PNG，215–285 KB |
-
-> 以上全部是 **CPU 模式**数据。GPU 模式未测（见下）。
-
-## 为什么没测 GPU
-
-这个环境的进程拿不到 GPU 设备（沙箱限制）：
+换 cu126 后仍然报：
 
 ```
-nvidia-smi → "NVIDIA-SMI has failed because you do not have suffient permissions"
-torch.cuda.is_available() → False
+RuntimeError: No CUDA GPUs are available
+CUDA not available on this system
 ```
 
-所以**GPU 下的真实速度需要本机双击 `run_nvidia_gpu.bat` 验证**。
-按 3050 4GB 的经验值预估：SD1.5 512×512 / 20 步约 **8–15 秒/张**。
-
-## GPU 模式的启动方式
+**不是驱动问题，是显卡被禁用了**：
 
 ```powershell
-D:\AI\ComfyUI_cu126\run_nvidia_gpu.bat
+pnputil /enum-devices /class Display
+# NVIDIA GeForce RTX 3050 Laptop GPU   Status: Disabled   ← 这里
+# AMD Radeon(TM) Graphics              Status: Started
 ```
 
-浏览器 → `http://127.0.0.1:8188`
+修复（需要管理员）：
 
-如果还是崩，说明驱动确实太旧，去 nvidia.cn 更新到 580 以上再试。
+```
+设备管理器 → 显示适配器 → NVIDIA GeForce RTX 3050 Laptop GPU
+→ 右键 → 启用设备
+```
+
+启用后 `nvidia-smi` 正常，ComfyUI 启动日志出现：
+
+```
+Total VRAM 4096 MB, total RAM 15557 MB
+Device: cuda:0 NVIDIA GeForce RTX 3050 Laptop GPU : cudaMallocAsync
+Enabled pinned memory 6222.0
+```
+
+> 这个坑值得记住：**"没有显卡驱动"和"显卡被禁用"报错很像**，
+> 但 `pnputil /enum-devices` 一眼能看出 Status 是 Disabled 还是 Started。
+
+## 自定义节点验证
+
+```
+/object_info 共 1038 个节点
+✅ PromptFromFile   | 分类 custom/batch | 输入 file_path, index
+✅ SaveNameByIndex  | 分类 custom/batch | 输入 prefix, index
+```
+
+## 批量脚本验证
+
+```
+提示词 2 条 | 文本节点 6 | 采样节点 3 | 输出 out_batch
+  [1/2]  34.7s  a photo of a ceramic coffee mug...
+  [2/2]  43.3s  a leather backpack on a concrete floor...
+完成 2 张，失败 0 张，总耗时 1.3 分钟，平均 39.0 秒/张
+```
+
+（这是 CPU 模式的数据，GPU 模式按 4.6 秒/张算，50 张约 4 分钟）
 
 ## 4 GB 显存的参数建议
 
 | 参数 | 建议值 | 原因 |
 |---|---|---|
-| 分辨率 | 512×512 | SD1.5 原生，再大就爆显存 |
+| 分辨率 | 512×512 | SD1.5 原生，再大容易爆显存 |
 | steps | 20 | 再高收益很小 |
-| batch_size | 1 | 4GB 只能 1 |
+| batch_size | 1 | 4 GB 只能 1 |
 | 模型 | SD1.5 | SDXL 至少要 8–10 GB |
-| 启动参数 | 默认即可 | 真 OOM 再加 `--lowvram` |
+| 启动参数 | 默认 | 真 OOM 再加 `--lowvram` |
+
+## 已知的画面问题
+
+SD1.5 在「杯子」这类物体上会画出两个把手——这是模型本身的问题，不是参数错。
+换更好的底模（如 Realistic Vision、DreamShaper）或加负面提示词能缓解。
