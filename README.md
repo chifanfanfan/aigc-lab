@@ -75,7 +75,17 @@ python scripts\batch_run.py --workflow workflows\txt2img_api.json --prompts prom
 完成 2 张，失败 0 张，总耗时 1.3 分钟，平均 39.0 秒/张
 ```
 
-### 4. 训 LoRA（上云）
+
+### 5. LoRA 数据集（可用 AI 生成）
+
+```powershell
+python train\make_dataset.py --n 20 --out dataset_style
+```
+
+固定风格 + 换 20 个主体，自动生成图和标签（**5.2 秒/张，20 张 1.7 分钟**），
+打包成 `dataset_style.zip`（6.3 MB）可直接传 Kaggle。详见 [docs/lora_dataset.md](docs/lora_dataset.md)。
+
+### 6. 训 LoRA（上云）
 
 本机 4 GB 显存训不动，用 `train/kaggle_sd15_lora.ipynb` 上 Kaggle 免费 T4 跑。
 
