@@ -13,7 +13,8 @@ AIGC 应用实战：ComfyUI 工作流 + 自定义节点 + 批量出图 + SD1.5 L
 | **GPU 出图 512×512 / 20 步** | ✅ **≈ 4.6 秒/张**（4.5 / 4.5 / 4.8） |
 | 首张（含模型加载） | ✅ 12.5 秒 |
 | **批量 10 张（GPU）** | ✅ **总耗时 54 秒，平均 5.4 秒/张**，0 失败 |
-| SD1.5 LoRA 训练 | ⏳ 待跑（Kaggle notebook 已备好） |
+| **SD1.5 LoRA 训练（Kaggle T4）** | ✅ **1000 步 / 19 分 15 秒 / loss 0.069 / 36 MB** |
+| **base vs LoRA 对比** | ✅ 见 `samples/lora_compare.png` |
 | Docker 部署 | ⏳ 待验证（本机 WSL2 不可用，走 CI） |
 
 > 50 张图 ≈ 4 分钟。CPU 模式下 384×384 / 6 步就要 39 秒，差 8 倍。
@@ -28,7 +29,10 @@ workflows/txt2img_api.json   可直接用的 API 格式工作流（文生图）
 train/kohya_sd15_lora.toml   SD1.5 LoRA 训练配置（kohya_ss，4G 极限档）
 train/kaggle_sd15_lora.ipynb  Kaggle 免费 T4 训练 notebook（本机显存不够时用）
 docker/Dockerfile            ComfyUI 的 GPU 镜像
-docs/measurements.md         实测数据 + cu130 驱动不匹配的排查过程
+docs/measurements.md         出图实测数据 + cu130 驱动不匹配的排查过程
+docs/lora_training.md        LoRA 训练全流程（参数/耗时/10 个坑）
+docs/lora_dataset.md         数据集怎么准备（含用 AI 生成素材）
+scripts/lora_compare.py      base vs LoRA 对比图生成脚本
 docs/hardware.md             4 GB 显存的边界与云端降级方案
 samples/                     CPU 模式跑出来的两张图（6 步，比较糊，仅证明链路通）
 ```
