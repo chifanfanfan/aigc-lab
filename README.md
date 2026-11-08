@@ -16,6 +16,14 @@
 
 左：原模型 ｜ 右：加载了自训 LoRA（`skyshop style`）。风格迁移明显——粉紫渐变、釉面质感。
 
+### 批量出视频（6 张图 → 16 秒 1080p）
+
+![视频画面](samples/video_frame.png)
+
+`ffmpeg` 的 zoompan 做推拉运镜 + xfade 做转场，纯 CPU 合成，4 GB 显存零压力。
+成片：`samples/product_video.mp4`（1080×1080 / 30fps / 16 秒）。
+
+> 为什么不用 AnimateDiff：它至少需要 6–8 GB 显存；电商批量出片本来就用「图+运镜」。
 ### 批量出图（10 张，54 秒）
 
 ![批量出图](samples/gpu_batch_oranges.png)
@@ -35,6 +43,7 @@
 | **loss** | 0.18 → **0.069** | |
 | LoRA 模型大小 | 36 MB（rank 32） | |
 | **本地 LLM 推理（Qwen2.5-0.5B）** | **1.0 GB 显存 / 3.3–4.3 tokens/s** | RTX 3050 4 GB |
+| **批量出视频（图+运镜+转场）** | **6 张图 → 16 秒 1080p 视频，合成 20 秒** | ffmpeg（纯 CPU） |
 
 ---
 
@@ -44,6 +53,8 @@
 custom_nodes/prompt_batch/   自定义节点：按序号取提示词 + 生成带序号文件名
 scripts/batch_run.py         批量出图（调 ComfyUI HTTP API）
 scripts/lora_compare.py      base vs LoRA 对比图生成
+scripts/make_video.py        批量出视频（图 + 运镜 + 转场）
+scripts/local_llm.py         本地部署 Qwen2.5 推理
 scripts/check_env.ps1        环境自检（显卡/显存/Python/磁盘）
 workflows/txt2img_api.json   API 格式工作流（可直接用）
 train/make_dataset.py        生成训练素材 + 自动打标签
